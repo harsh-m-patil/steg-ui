@@ -1,101 +1,313 @@
-import Image from "next/image";
+"use client"
 
-export default function Home() {
+import type React from "react"
+
+import { useState } from "react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Download, FileImage, Upload } from "lucide-react"
+import { encodeMessage, decodeMessage } from "@/lib/steganography"
+
+export default function SteganographyTool() {
+  const [activeTab, setActiveTab] = useState("encode")
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <div className="container mx-auto py-10 px-4">
+      <h1 className="text-3xl font-bold text-center mb-6">Image Steganography Tool</h1>
+      <p className="text-center text-muted-foreground mb-8 max-w-2xl mx-auto">
+        Hide secret messages within images or extract hidden messages from steganographic images.
+      </p>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      <Tabs defaultValue="encode" className="max-w-3xl mx-auto" onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-2 mb-8">
+          <TabsTrigger value="encode">Encode Message</TabsTrigger>
+          <TabsTrigger value="decode">Decode Message</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="encode">
+          <EncodeTab />
+        </TabsContent>
+
+        <TabsContent value="decode">
+          <DecodeTab />
+        </TabsContent>
+      </Tabs>
     </div>
-  );
+  )
 }
+
+function EncodeTab() {
+  const [image, setImage] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [message, setMessage] = useState("")
+  const [technique, setTechnique] = useState("lsb")
+  const [encodedImage, setEncodedImage] = useState<string | null>(null)
+  const [isEncoding, setIsEncoding] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      if (!file.type.startsWith("image/")) {
+        setError("Please select a valid image file")
+        return
+      }
+
+      setImage(file)
+      setError(null)
+
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const handleEncode = async () => {
+    if (!image) {
+      setError("Please select an image")
+      return
+    }
+
+    if (!message.trim()) {
+      setError("Please enter a message to hide")
+      return
+    }
+
+    setError(null)
+    setIsEncoding(true)
+
+    try {
+      const result = await encodeMessage(image, message, technique)
+      setEncodedImage(result)
+    } catch (err) {
+      setError("Failed to encode message: " + (err instanceof Error ? err.message : String(err)))
+    } finally {
+      setIsEncoding(false)
+    }
+  }
+
+  const handleDownload = () => {
+    if (encodedImage) {
+      const link = document.createElement("a")
+      link.href = encodedImage
+      link.download = `steg-encoded-${Date.now()}.png`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Encode Secret Message</CardTitle>
+        <CardDescription>Hide your message within an image using steganography</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {error && (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        <div className="space-y-2">
+          <Label htmlFor="image-upload">Upload Image</Label>
+          <div className="flex items-center gap-4">
+            <Button asChild variant="outline" className="w-full h-32 border-dashed">
+              <label htmlFor="image-upload" className="cursor-pointer flex flex-col items-center justify-center h-full">
+                <FileImage className="h-8 w-8 mb-2 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Click to select image</span>
+                <Input id="image-upload" type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+              </label>
+            </Button>
+
+            {imagePreview && (
+              <div className="relative h-32 w-32 border rounded-md overflow-hidden">
+                <img src={imagePreview || "/placeholder.svg"} alt="Preview" className="h-full w-full object-cover" />
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="message">Secret Message</Label>
+          <Textarea
+            id="message"
+            placeholder="Enter the secret message you want to hide..."
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            className="min-h-[100px]"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="technique">Steganography Technique</Label>
+          <Select value={technique} onValueChange={setTechnique}>
+            <SelectTrigger id="technique">
+              <SelectValue placeholder="Select technique" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="lsb">Least Significant Bit (LSB)</SelectItem>
+              <SelectItem value="lsb-improved">Improved LSB</SelectItem>
+              <SelectItem value="patchwork">Patchwork Algorithm</SelectItem>
+              <SelectItem value="dct">Discrete Cosine Transform (DCT)</SelectItem>
+              <SelectItem value="histogram">Histogram Shifting</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <Button onClick={handleEncode} className="w-full" disabled={isEncoding || !image || !message.trim()}>
+          {isEncoding ? "Encoding..." : "Encode Message"}
+        </Button>
+
+        {encodedImage && (
+          <div className="space-y-4">
+            <div className="border rounded-md p-4">
+              <h3 className="font-medium mb-2">Encoded Image</h3>
+              <div className="flex justify-center">
+                <img src={encodedImage || "/placeholder.svg"} alt="Encoded" className="max-h-[300px] object-contain" />
+              </div>
+            </div>
+
+            <Button onClick={handleDownload} className="w-full" variant="outline">
+              <Download className="mr-2 h-4 w-4" />
+              Download Encoded Image
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function DecodeTab() {
+  const [image, setImage] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [technique, setTechnique] = useState("lsb")
+  const [decodedMessage, setDecodedMessage] = useState<string | null>(null)
+  const [isDecoding, setIsDecoding] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      if (!file.type.startsWith("image/")) {
+        setError("Please select a valid image file")
+        return
+      }
+
+      setImage(file)
+      setError(null)
+      setDecodedMessage(null)
+
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const handleDecode = async () => {
+    if (!image) {
+      setError("Please select an image")
+      return
+    }
+
+    setError(null)
+    setIsDecoding(true)
+
+    try {
+      const result = await decodeMessage(image, technique)
+      if (result.trim()) {
+        setDecodedMessage(result)
+      } else {
+        setError("No hidden message found or the message is empty")
+      }
+    } catch (err) {
+      setError("Failed to decode message: " + (err instanceof Error ? err.message : String(err)))
+    } finally {
+      setIsDecoding(false)
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Decode Hidden Message</CardTitle>
+        <CardDescription>Extract a hidden message from a steganographic image</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {error && (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        <div className="space-y-2">
+          <Label htmlFor="decode-image-upload">Upload Encoded Image</Label>
+          <div className="flex items-center gap-4">
+            <Button asChild variant="outline" className="w-full h-32 border-dashed">
+              <label
+                htmlFor="decode-image-upload"
+                className="cursor-pointer flex flex-col items-center justify-center h-full"
+              >
+                <Upload className="h-8 w-8 mb-2 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Click to select encoded image</span>
+                <Input
+                  id="decode-image-upload"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageChange}
+                />
+              </label>
+            </Button>
+
+            {imagePreview && (
+              <div className="relative h-32 w-32 border rounded-md overflow-hidden">
+                <img src={imagePreview || "/placeholder.svg"} alt="Preview" className="h-full w-full object-cover" />
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="decode-technique">Steganography Technique</Label>
+          <Select value={technique} onValueChange={setTechnique}>
+            <SelectTrigger id="decode-technique">
+              <SelectValue placeholder="Select technique" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="lsb">Least Significant Bit (LSB)</SelectItem>
+              <SelectItem value="lsb-improved">Improved LSB</SelectItem>
+              <SelectItem value="patchwork">Patchwork Algorithm</SelectItem>
+              <SelectItem value="dct">Discrete Cosine Transform (DCT)</SelectItem>
+              <SelectItem value="histogram">Histogram Shifting</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <Button onClick={handleDecode} className="w-full" disabled={isDecoding || !image}>
+          {isDecoding ? "Decoding..." : "Decode Message"}
+        </Button>
+
+        {decodedMessage && (
+          <div className="border rounded-md p-4">
+            <h3 className="font-medium mb-2">Decoded Message</h3>
+            <div className="bg-muted p-3 rounded-md whitespace-pre-wrap">{decodedMessage}</div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
