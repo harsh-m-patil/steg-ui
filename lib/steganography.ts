@@ -1,4 +1,3 @@
-import { applyDCT, applyInverseDCT, extractBlock, writeBlock } from "./dct";
 /**
  * Image Steganography Library
  *
@@ -128,9 +127,6 @@ function processEncoding(
 		case "patchwork":
 			applyPatchwork(data, binaryMessage, canvas.width, canvas.height);
 			break;
-		case "dct":
-			applyDCTSteganography(data, binaryMessage, canvas.width, canvas.height);
-			break;
 		case "histogram":
 			applyHistogramShifting(data, binaryMessage);
 			break;
@@ -182,13 +178,6 @@ function processDecoding(img: HTMLImageElement, technique: string): string {
 			break;
 		case "patchwork":
 			binaryMessage = extractPatchwork(data, canvas.width, canvas.height);
-			break;
-		case "dct":
-			binaryMessage = extractDCTSteganography(
-				data,
-				canvas.width,
-				canvas.height,
-			);
 			break;
 		case "histogram":
 			binaryMessage = extractHistogramShifting(data);
@@ -486,214 +475,6 @@ function extractPatchwork(
 			const text = binaryToText(binary);
 			if (text.includes("§END§")) {
 				return binary;
-			}
-		}
-	}
-
-	return binary;
-}
-
-// Fix the DCT steganography implementation
-function applyDCTSteganography(
-	data: Uint8ClampedArray,
-	binaryMessage: string,
-	width: number,
-	height: number,
-): void {
-	let bitIndex = 0;
-	const blockSize = 8;
-
-	// Calculate how many complete 8x8 blocks we can fit
-	const blocksX = Math.floor(width / blockSize);
-	const blocksY = Math.floor(height / blockSize);
-
-	// We'll use the blue channel for embedding (less noticeable to human eye)
-	const channel = 2;
-
-	// Store message length in the first block for extraction
-	// Convert message length to 16-bit binary
-	const messageLengthBinary = binaryMessage.length
-		.toString(2)
-		.padStart(16, "0");
-
-	// Loop through blocks
-	for (
-		let blockY = 0;
-		blockY < blocksY && bitIndex < binaryMessage.length;
-		blockY++
-	) {
-		for (
-			let blockX = 0;
-			blockX < blocksX && bitIndex < binaryMessage.length;
-			blockX++
-		) {
-			// Skip the first block - we'll use it to store metadata
-			if (blockY === 0 && blockX === 0) {
-				const metadataBlock = extractBlock(data, width, 0, 0, channel);
-
-				// Store a signature and message length in this block
-				// We'll modify the DC coefficient (0,0) to be even as a signature
-				const dctCoeffs = applyDCT(metadataBlock);
-				dctCoeffs[0][0] = Math.floor(dctCoeffs[0][0] / 2) * 2; // Make even
-
-				// Store message length in positions (1,1) through (2,0)
-				for (let i = 0; i < 16 && i < messageLengthBinary.length; i++) {
-					const row = Math.floor(i / 4) + 1;
-					const col = i % 4;
-
-					if (messageLengthBinary[i] === "0") {
-						dctCoeffs[row][col] = Math.floor(dctCoeffs[row][col] / 2) * 2; // Make even
-					} else {
-						dctCoeffs[row][col] = Math.floor(dctCoeffs[row][col] / 2) * 2 + 1; // Make odd
-					}
-				}
-
-				// Apply inverse DCT and write back
-				const modifiedBlock = applyInverseDCT(dctCoeffs);
-				writeBlock(data, width, 0, 0, modifiedBlock, channel);
-				continue;
-			}
-
-			// Extract 8x8 block
-			const x = blockX * blockSize;
-			const y = blockY * blockSize;
-			const block = extractBlock(data, width, x, y, channel);
-
-			// Apply DCT to the block
-			const dctCoeffs = applyDCT(block);
-
-			// Embed data in mid-frequency coefficients
-			// We'll use positions (3,3), (3,4), (4,3), (4,4) for embedding
-			// These are mid-frequency coefficients that don't affect visual quality much
-			const embedPositions = [
-				[3, 3],
-				[3, 4],
-				[4, 3],
-				[4, 4],
-			];
-
-			for (
-				let i = 0;
-				i < embedPositions.length && bitIndex < binaryMessage.length;
-				i++
-			) {
-				const [u, v] = embedPositions[i];
-				const bit = Number.parseInt(binaryMessage[bitIndex]);
-
-				// Quantize the coefficient to even/odd based on the bit
-				// Use a larger quantization step for better robustness
-				const quantStep = 8;
-				const quantized = Math.round(dctCoeffs[u][v] / quantStep) * quantStep;
-
-				if (bit === 0) {
-					// Make coefficient even
-					dctCoeffs[u][v] = quantized;
-				} else {
-					// Make coefficient odd
-					dctCoeffs[u][v] = quantized + Math.floor(quantStep / 2);
-				}
-
-				bitIndex++;
-			}
-
-			// Apply inverse DCT
-			const modifiedBlock = applyInverseDCT(dctCoeffs);
-
-			// Write the block back to the image
-			writeBlock(data, width, x, y, modifiedBlock, channel);
-		}
-	}
-}
-
-/**
- * Extracts a message hidden using DCT-based steganography
- *
- * @param data - The image data array
- * @param width - The width of the image
- * @param height - The height of the image
- * @returns The binary message extracted from the image
- */
-function extractDCTSteganography(
-	data: Uint8ClampedArray,
-	width: number,
-	height: number,
-): string {
-	let binary = "";
-	const blockSize = 8;
-
-	// Calculate how many complete 8x8 blocks we can fit
-	const blocksX = Math.floor(width / blockSize);
-	const blocksY = Math.floor(height / blockSize);
-
-	// We used the blue channel for embedding
-	const channel = 2;
-
-	// First, extract metadata from the first block
-	const metadataBlock = extractBlock(data, width, 0, 0, channel);
-	const metadctCoeffs = applyDCT(metadataBlock);
-
-	// Check signature (DC coefficient should be even)
-	if (Math.round(metadctCoeffs[0][0]) % 2 !== 0) {
-		throw new Error(
-			"Invalid DCT signature. This image may not contain hidden data or was encoded with a different technique.",
-		);
-	}
-
-	// Extract message length
-	let messageLengthBinary = "";
-	for (let i = 0; i < 16; i++) {
-		const row = Math.floor(i / 4) + 1;
-		const col = i % 4;
-
-		messageLengthBinary +=
-			Math.round(metadctCoeffs[row][col]) % 2 === 0 ? "0" : "1";
-	}
-
-	const messageLength = Number.parseInt(messageLengthBinary, 2);
-
-	// The same embed positions we used for encoding
-	const embedPositions = [
-		[3, 3],
-		[3, 4],
-		[4, 3],
-		[4, 4],
-	];
-
-	// Loop through blocks
-	for (
-		let blockY = 0;
-		blockY < blocksY && binary.length < messageLength;
-		blockY++
-	) {
-		for (
-			let blockX = 0;
-			blockX < blocksX && binary.length < messageLength;
-			blockX++
-		) {
-			// Skip the first block - it contains metadata
-			if (blockY === 0 && blockX === 0) {
-				continue;
-			}
-
-			// Extract 8x8 block
-			const x = blockX * blockSize;
-			const y = blockY * blockSize;
-			const block = extractBlock(data, width, x, y, channel);
-
-			// Apply DCT to the block
-			const dctCoeffs = applyDCT(block);
-
-			// Extract bits from the coefficients
-			for (
-				let i = 0;
-				i < embedPositions.length && binary.length < messageLength;
-				i++
-			) {
-				const [u, v] = embedPositions[i];
-
-				// Check if coefficient is even or odd
-				const bit = Math.round(dctCoeffs[u][v]) % 2 === 0 ? "0" : "1";
-				binary += bit;
 			}
 		}
 	}

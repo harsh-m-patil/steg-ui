@@ -25,8 +25,10 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Download, FileImage, Upload } from "lucide-react";
 import { encodeMessage, decodeMessage } from "@/lib/steganography";
+import Image from "next/image";
 
 export default function SteganographyTool() {
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	const [activeTab, setActiveTab] = useState("encode");
 
 	return (
@@ -170,10 +172,12 @@ function EncodeTab() {
 
 						{imagePreview && (
 							<div className="relative h-32 w-32 border rounded-md overflow-hidden">
-								<img
+								<Image
 									src={imagePreview || "/placeholder.svg"}
 									alt="Preview"
 									className="h-full w-full object-cover"
+									width={128}
+									height={128}
 								/>
 							</div>
 						)}
@@ -201,9 +205,6 @@ function EncodeTab() {
 							<SelectItem value="lsb">Least Significant Bit (LSB)</SelectItem>
 							<SelectItem value="lsb-improved">Improved LSB</SelectItem>
 							<SelectItem value="patchwork">Patchwork Algorithm</SelectItem>
-							<SelectItem value="dct">
-								Discrete Cosine Transform (DCT)
-							</SelectItem>
 							<SelectItem value="histogram">Histogram Shifting</SelectItem>
 						</SelectContent>
 					</Select>
@@ -222,10 +223,12 @@ function EncodeTab() {
 						<div className="border rounded-md p-4">
 							<h3 className="font-medium mb-2">Encoded Image</h3>
 							<div className="flex justify-center">
-								<img
+								<Image
 									src={encodedImage || "/placeholder.svg"}
 									alt="Encoded"
 									className="max-h-[300px] object-contain"
+									width={300}
+									height={500}
 								/>
 							</div>
 						</div>
@@ -342,10 +345,12 @@ function DecodeTab() {
 
 						{imagePreview && (
 							<div className="relative h-32 w-32 border rounded-md overflow-hidden">
-								<img
+								<Image
 									src={imagePreview || "/placeholder.svg"}
 									alt="Preview"
 									className="h-full w-full object-cover"
+									height={128}
+									width={128}
 								/>
 							</div>
 						)}
@@ -362,9 +367,6 @@ function DecodeTab() {
 							<SelectItem value="lsb">Least Significant Bit (LSB)</SelectItem>
 							<SelectItem value="lsb-improved">Improved LSB</SelectItem>
 							<SelectItem value="patchwork">Patchwork Algorithm</SelectItem>
-							<SelectItem value="dct">
-								Discrete Cosine Transform (DCT)
-							</SelectItem>
 							<SelectItem value="histogram">Histogram Shifting</SelectItem>
 						</SelectContent>
 					</Select>
