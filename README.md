@@ -1,36 +1,72 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Steg-UI
 
-## Getting Started
+**Steg-UI** is a web-based steganography tool that allows users to hide and extract messages from images using four different algorithms: **LSB**, **Improved LSB**, **Patchwork Algorithm**, and **Histogram Shifting**. The app is built using **Next.js**, **Tailwind CSS**, and **TypeScript**, providing a clean and responsive user interface.
 
-First, run the development server:
+🌐 **Live Demo:** [steg-ui.vercel.app](https://steg-ui.vercel.app/)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+---
+
+## 🔧 Features
+
+- 🖼️ Upload and preview images
+- 🔐 Hide secret messages using:
+
+  - **LSB (Least Significant Bit)**
+  - **Improved LSB**
+  - **Patchwork Algorithm**
+  - **Histogram Shifting**
+
+- 🔎 Extract hidden messages from stego-images
+- 💡 Clean and modern UI with tab-based navigation
+
+---
+
+## 🛠️ Tech Stack
+
+- **Framework:** [Next.js](https://nextjs.org/)
+- **Styling:** [Tailwind CSS](https://tailwindcss.com/)
+- **Language:** TypeScript
+- **Package Manager:** pnpm
+
+---
+
+## 🗂️ Project Structure
+
+```
+.
+├── app/                   # Next.js pages and layout
+├── components/ui/         # Reusable UI components (button, input, card, etc.)
+├── lib/                   # Core logic for steganography and utility functions
+├── public/                # Static assets (icons, logos)
+├── package.json           # Project metadata and dependencies
+└── README.md              # You're reading it!
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🚀 Getting Started
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Prerequisites
 
-## Learn More
+- Node.js >= 18
+- pnpm (`npm install -g pnpm`)
 
-To learn more about Next.js, take a look at the following resources:
+### Installation
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+git clone https://github.com/your-username/steg-ui.git
+cd steg-ui
+pnpm install
+pnpm dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Visit `http://localhost:3000` in your browser.
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 📁 Algorithms Explained
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **LSB**: Embeds data in the least significant bits of image pixels.
+- **Improved LSB**: A refined version of LSB that optimizes data embedding.
+- **Patchwork**: Embeds data by modifying the pixel intensity difference between image regions.
+- **Histogram Shifting**: Utilizes histogram peaks to shift and embed data with minimal distortion.
